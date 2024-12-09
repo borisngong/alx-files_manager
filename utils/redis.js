@@ -1,5 +1,5 @@
-const redis = require("redis");
-const { promisify } = require("util");
+const redis = require('redis');
+const { promisify } = require('util');
 
 class RedisClient {
   constructor() {
@@ -7,9 +7,9 @@ class RedisClient {
 
     this.getAsync = promisify(this.client.get).bind(this.client);
 
-    this.client.on("error", (error) => {
+    this.client.on('error', (error) => {
       console.log(
-        `An error occurred trying to connect to the server: ${error.message}`
+        `An error occurred trying to connect to the server: ${error.message}`,
       );
     });
   }
