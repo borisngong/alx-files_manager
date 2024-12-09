@@ -1,18 +1,20 @@
-import sha1 from 'sha1'; // Import SHA1 hashing function
-import Queue from 'bull'; // Import Bull queue
-import { findUserById, findUserIdByToken } from '../maintain/support';
-import dbClient from '../utils/db';
+import sha1 from "sha1";
+import Queue from "bull";
+import { findUserById, findUserIdByToken } from "../maintain/support";
+import dbClient from "../utils/db";
 
-const userQueue = new Queue('userQueue'); // Create a new Bull queue for user tasks
+const userQueue = new Queue("userQueue"); // Create a new Bull queue for user tasks
 
 class UsersController {
   static async postNew(request, response) {
     const { email, password } = request.body;
-    if (!email) return response.status(400).send({ error: 'Missing email' });
-    if (!password) return response.status(400).send({ error: 'Missing password' });
+    if (!email) return response.status(400).send({ error: "Missing email" });
+    if (!password)
+      return response.status(400).send({ error: "Missing password" });
 
     const emailExists = await dbClient.users.findOne({ email });
-    if (emailExists) return response.status(400).send({ error: 'Already exist' });
+    if (emailExists)
+      return response.status(400).send({ error: "Already exist" });
 
     const sha1Password = sha1(password); // Hash the password
     let result;
@@ -24,7 +26,7 @@ class UsersController {
       });
     } catch (err) {
       await userQueue.add({}); // Add to user queue on error
-      return response.status(500).send({ error: 'Error creating user' }); // Handle insertion error
+      return response.status(500).send({ error: "Error creating user" }); // Handle insertion error
     }
 
     const user = {
@@ -42,17 +44,17 @@ class UsersController {
   }
 
   static async getMe(request, response) {
-    const token = request.headers['x-token']; // Retrieve token from headers
+    const token = request.headers["x-token"]; // Retrieve token from headers
     if (!token) {
-      return response.status(401).json({ error: 'Unauthorized' }); // Handle missing token
+      return response.status(401).json({ error: "Unauthorized" }); // Handle missing token
     }
 
     const userId = await findUserIdByToken(request); // Get user ID based on token
-    if (!userId) return response.status(401).send({ error: 'Unauthorized' }); // Handle unauthorized access
+    if (!userId) return response.status(401).send({ error: "Unauthorized" }); // Handle unauthorized access
 
     const user = await findUserById(userId); // Retrieve user based on user ID
 
-    if (!user) return response.status(401).send({ error: 'Unauthorized' }); // Handle unauthorized access
+    if (!user) return response.status(401).send({ error: "Unauthorized" }); // Handle unauthorized access
 
     const processedUser = { id: user._id, ...user }; // Create processed user object
     delete processedUser._id; // Remove internal ID
