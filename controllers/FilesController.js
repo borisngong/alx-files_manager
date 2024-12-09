@@ -116,7 +116,7 @@ class FilesController {
     const user = await DBClient.users.findOne({ _id: ObjectId(redisToken) }); // Fetch user info
     if (!user) return res.status(401).send({ error: 'Unauthorized' });
 
-    const fileId = req.params.id; // Get the file ID from the request parameters
+    const fileId = req.params.id || ''; // Get the file ID from the request parameters
     if (!fileId) return res.status(404).send({ error: 'Not found' });
 
     const file = await DBClient.files.findOne({
@@ -146,14 +146,18 @@ class FilesController {
     const user = await DBClient.users.findOne({ _id: ObjectId(redisToken) }); // Fetch user info
     if (!user) return res.status(401).send({ error: 'Unauthorized' });
 
-    const parentId = req.query.parentId || 0; // Get the parent ID for file hierarchy
-    const pagination = parseInt(req.query.page, 10) || 0; // Get pagination parameter with radix 10
+    const parentId = req.query.parentId ? ObjectId(req.query.parentId) : 0;
+    const pagination = parseInt(req.query.page, 10) || 0;
 
-    const matchQuery = { userId: user._id, parentId }; // Prepare aggregation match query
+    const matchQuery = { userId: user._id }; // Prepare the base match query for the user
+    if (parentId !== 0) {
+      matchQuery.parentId = parentId; // Add parentId condition if it's not root
+    }
+
     const aggregateData = [
-      { $match: matchQuery },
-      { $skip: pagination * 20 },
-      { $limit: 20 },
+      { $match: matchQuery }, // Match user files
+      { $skip: pagination * 20 }, // Pagination skip
+      { $limit: 20 }, // Limit to 20 items
     ];
 
     const files = await DBClient.files.aggregate(aggregateData).toArray(); // Fetch files from DB
