@@ -105,71 +105,6 @@ class FilesController {
     });
   }
 
-  static async getShow(req, res) {
-    const token = req.header('X-Token') || null; // Get the token from the request header
-    if (!token) return res.status(401).send({ error: 'Unauthorized' });
-
-    const redisToken = await RedisClient.get(`auth_${token}`); // Validate token in Redis
-    if (!redisToken) return res.status(401).send({ error: 'Unauthorized' });
-
-    const user = await DBClient.users.findOne({ _id: ObjectId(redisToken) });
-    if (!user) return res.status(401).send({ error: 'Unauthorized' });
-
-    const fileId = req.params.id; // Get the file ID from the request parameters
-    if (!fileId) return res.status(404).send({ error: 'Not found' });
-
-    // Fetch file information linked to the user
-    const file = await DBClient.files.findOne({
-      _id: ObjectId(fileId),
-      userId: user._id,
-    });
-    if (!file) return res.status(404).send({ error: 'Not found' });
-
-    return res.send({
-      id: file._id,
-      userId: file.userId,
-      name: file.name,
-      type: file.type,
-      isPublic: file.isPublic,
-      parentId: file.parentId,
-    });
-  }
-
-  // Method to list user files based on parentId and pagination
-  static async getIndex(req, res) {
-    const token = req.header('X-Token') || null; // Get the token from the request header
-    if (!token) return res.status(401).send({ error: 'Unauthorized' });
-
-    const redisToken = await RedisClient.get(`auth_${token}`); // Validate token in Redis
-    if (!redisToken) return res.status(401).send({ error: 'Unauthorized' });
-
-    const user = await DBClient.users.findOne({ _id: ObjectId(redisToken) }); // Fetch user info
-    if (!user) return res.status(401).send({ error: 'Unauthorized' });
-
-    const parentId = req.query.parentId ? ObjectId(req.query.parentId) : 0;
-    const pagination = parseInt(req.query.page, 10) || 0; // Get pagination parameter
-    const limit = 20; // Maximum items per page
-
-    const files = await DBClient.files
-      .aggregate([
-        { $match: { userId: user._id, parentId } }, // Match user files with specified parentId
-        { $skip: pagination * limit },
-        { $limit: limit },
-      ])
-      .toArray(); // Fetch files from DB with pagination
-
-    const filesArray = files.map((file) => ({
-      id: file._id,
-      userId: file.userId,
-      name: file.name,
-      type: file.type,
-      isPublic: file.isPublic,
-      parentId: file.parentId,
-    }));
-
-    return res.send(filesArray); // Return files list
-  }
-
   // Method to publish a file
   static async putPublish(req, res) {
     const token = req.header('X-Token') || null; // Get the token from the request header
@@ -290,6 +225,70 @@ class FilesController {
     } catch (error) {
       return res.status(404).send({ error: 'Not found' }); // Handle file read errors
     }
+  }
+
+  static async getShow(req, res) {
+    const token = req.header('X-Token') || null; // Get the token from the request header
+    if (!token) return res.status(401).send({ error: 'Unauthorized' });
+
+    const redisToken = await RedisClient.get(`auth_${token}`); // Validate token in Redis
+    if (!redisToken) return res.status(401).send({ error: 'Unauthorized' });
+
+    const user = await DBClient.users.findOne({ _id: ObjectId(redisToken) }); // Fetch user info
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+
+    const fileId = req.params.id || ''; // Get the file ID from the request parameters
+    if (!fileId) return res.status(404).send({ error: 'Not found' });
+
+    const file = await DBClient.files.findOne({
+      _id: ObjectId(fileId),
+      userId: user._id,
+    }); // Fetch file information
+    if (!file) return res.status(404).send({ error: 'Not found' });
+
+    return res.send({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
+    });
+  }
+
+  // Method to list user files based on parentId and pagination
+  static async getIndex(req, res) {
+    const token = req.header('X-Token') || null; // Get the token from the request header
+    if (!token) return res.status(401).send({ error: 'Unauthorized' });
+
+    const redisToken = await RedisClient.get(`auth_${token}`); // Validate token in Redis
+    if (!redisToken) return res.status(401).send({ error: 'Unauthorized' });
+
+    const user = await DBClient.users.findOne({ _id: ObjectId(redisToken) }); // Fetch user info
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+
+    const parentId = req.query.parentId || 0; // Get the parent ID for file hierarchy
+    const pagination = parseInt(req.query.page, 10) || 0; // Get pagination parameter
+    const limit = 20; // Maximum items per page
+
+    const files = await DBClient.files
+      .aggregate([
+        { $match: { userId: user._id, parentId: ObjectId(parentId) } },
+        { $skip: pagination * limit },
+        { $limit: limit },
+      ])
+      .toArray(); // Fetch files from DB with pagination
+
+    const filesArray = files.map((file) => ({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
+    }));
+
+    return res.send(filesArray); // Return files list
   }
 }
 
