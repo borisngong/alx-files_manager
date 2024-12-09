@@ -1,15 +1,14 @@
 import sha1 from "sha1"; // Import SHA1 hashing function
 import Queue from "bull"; // Import Bull queue
-import { findUserById, findUserIdByToken } from "../maintain/support"; // Import user-related functions
-import dbClient from "../utils/db"; // Import database client
+import { findUserById, findUserIdByToken } from "../maintain/support";
+import dbClient from "../utils/db";
 
 const userQueue = new Queue("userQueue"); // Create a new Bull queue for user tasks
 
 class UsersController {
   static async postNew(request, response) {
-    const { email, password } = request.body; // Destructure email and password from request body
-
-    if (!email) return response.status(400).send({ error: "Missing email" }); // Check for email
+    const { email, password } = request.body;
+    if (!email) return response.status(400).send({ error: "Missing email" });
     if (!password)
       return response.status(400).send({ error: "Missing password" }); // Check for password
 

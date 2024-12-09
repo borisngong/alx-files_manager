@@ -1,13 +1,13 @@
 import dbClient from "../utils/db.js";
 import redisClient from "../utils/redis.js";
-import { ObjectId } from "mongodb"; // Import ObjectId for MongoDB
-import fs from "fs"; // Import filesystem module
-import path from "path"; // Import path module for file paths
-import { v4 as uuidv4 } from "uuid"; // Import UUID for unique file naming
+import { ObjectId } from "mongodb";
+import fs from "fs";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
 import fileQueue from "../worker.js"; // Import the file processing queue
-import mime from "mime-types"; // Import mime-types for handling MIME types
+import mime from "mime-types";
 
-const DEFAULT_FOLDER_PATH = process.env.FOLDER_PATH || "/tmp/files_manager"; // Default folder path
+const DEFAULT_FOLDER_PATH = process.env.FOLDER_PATH || "/tmp/files_manager";
 
 class FilesController {
   static async postUpload(req, res) {
