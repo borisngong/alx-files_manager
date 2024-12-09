@@ -264,21 +264,22 @@ class FilesController {
     const redisToken = await RedisClient.get(`auth_${token}`); // Validate token in Redis
     if (!redisToken) return res.status(401).send({ error: 'Unauthorized' });
 
-    const user = await DBClient.users.findOne({ _id: ObjectId(redisToken) }); // Fetch user info
+    const user = await DBClient.users.findOne({
+      _id: ObjectId(redisToken),
+    }); // Fetch user info
     if (!user) return res.status(401).send({ error: 'Unauthorized' });
 
     const parentId = req.query.parentId || 0; // Get the parent ID for file hierarchy
     const pagination = parseInt(req.query.page, 10) || 0; // Get pagination parameter
-    const limit = 20; // Maximum items per page
+    const aggregationMatch = { userId: user._id, parentId }; // Prepare aggregation match query
 
-    const files = await DBClient.files
-      .aggregate([
-        { $match: { userId: user._id, parentId: ObjectId(parentId) } },
-        { $skip: pagination * limit },
-        { $limit: limit },
-      ])
-      .toArray(); // Fetch files from DB with pagination
+    const aggregateData = [
+      { $match: aggregationMatch },
+      { $skip: pagination * 20 },
+      { $limit: 20 },
+    ];
 
+    const files = await DBClient.files.aggregate(aggregateData).toArray(); // Fetch files from DB
     const filesArray = files.map((file) => ({
       id: file._id,
       userId: file.userId,
