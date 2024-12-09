@@ -105,7 +105,7 @@ class FilesController {
     });
   }
 
-  // Method to retrieve file information
+  // Method to retrieve file information by ID
   static async getShow(req, res) {
     const token = req.header('X-Token') || null; // Get the token from the request header
     if (!token) return res.status(401).send({ error: 'Unauthorized' });
@@ -135,7 +135,7 @@ class FilesController {
     });
   }
 
-  // Method to list user files
+  // Method to list user files based on parentId and pagination
   static async getIndex(req, res) {
     const token = req.header('X-Token') || null; // Get the token from the request header
     if (!token) return res.status(401).send({ error: 'Unauthorized' });
@@ -143,36 +143,29 @@ class FilesController {
     const redisToken = await RedisClient.get(`auth_${token}`); // Validate token in Redis
     if (!redisToken) return res.status(401).send({ error: 'Unauthorized' });
 
-    const user = await DBClient.users.findOne({
-      _id: ObjectId(redisToken),
-    }); // Fetch user info
+    const user = await DBClient.users.findOne({ _id: ObjectId(redisToken) }); // Fetch user info
     if (!user) return res.status(401).send({ error: 'Unauthorized' });
 
     const parentId = req.query.parentId || 0; // Get the parent ID for file hierarchy
-    const pagination = req.query.page || 0; // Get pagination parameter
-    const aggregationMatch = { $and: [{ parentId }] }; // Prepare aggregation match query
-    let aggregateData = [
-      { $match: aggregationMatch },
-      { $skip: pagination * 20 },
-      { $limit: 20 },
-    ];
-    if (parentId === 0) {
-      aggregateData = [{ $skip: pagination * 20 }, { $limit: 20 }]; // Adjust for root files
-    }
+    const pagination = parseInt(req.query.page, 10) || 0; // Get pagination parameter
+    const limit = 20; // Maximum items per page
 
-    const files = await DBClient.files.aggregate(aggregateData); // Fetch files from DB
-    const filesArray = [];
-    await files.forEach((file) => {
-      const fileItem = {
-        id: file._id,
-        userId: file.userId,
-        name: file.name,
-        type: file.type,
-        isPublic: file.isPublic,
-        parentId: file.parentId,
-      };
-      filesArray.push(fileItem);
-    });
+    const files = await DBClient.files
+      .aggregate([
+        { $match: { userId: user._id, parentId: ObjectId(parentId) } },
+        { $skip: pagination * limit },
+        { $limit: limit },
+      ])
+      .toArray(); // Fetch files from DB with pagination
+
+    const filesArray = files.map((file) => ({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
+    }));
 
     return res.send(filesArray); // Return files list
   }
